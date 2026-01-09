@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Desafio Funcional - Live Academia</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script> <!-- Lib para QR Code -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #F3F4F6; }
+        
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            height: 300px;
+            max-height: 350px;
+            margin: 0 auto;
+        }
+        
+        .signature-canvas {
+            border: 2px dashed #CBD5E1;
+            background-color: #ffffff;
+            cursor: crosshair;
+            width: 100%;
+            height: 150px;
+            touch-action: none; 
+        }
+        
+        /* Custom scrollbar for main content */
+        .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: #f1f1f1; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        /* Tab transitions */
+        .tab-content { display: none; animation: fadeIn 0.3s ease-in-out; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Loading Spinner */
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 4px solid #ffffff;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="text-slate-800 antialiased bg-slate-100 h-screen flex flex-col md:p-4">
+
+    <!-- App Container -->
+    <div class="flex-1 flex flex-col md:flex-row max-w-7xl mx-auto bg-white md:shadow-xl md:rounded-xl overflow-hidden border-slate-200 w-full h-full md:h-auto md:min-h-[80vh]">
+
+        <!-- Sidebar Navigation -->
+        <nav id="sidebar" class="w-full md:w-72 bg-slate-900 text-white flex-shrink-0 flex flex-col justify-between z-10 shadow-md">
+            <div class="p-4 md:p-6">
+                <div class="flex items-center justify-between md:block mb-2 md:mb-8">
+                    <div>
+                        <!-- TÍTULO ATUALIZADO -->
+                        <h1 class="text-lg md:text-xl font-bold tracking-wide text-indigo-400 leading-tight">Desafio Funcional</h1>
+                        <p class="text-xs text-slate-400 hidden md:block mt-1">2º Desafio Funcional Interno Live Academia</p>
+                    </div>
+                    <div class="md:hidden text-xs text-slate-400 font-mono">
+                        <span id="mobile-step-indicator">1</span>/5
+                    </div>
+                </div>
+                
+                <!-- Nav List -->
+                <ul class="flex md:flex-col space-x-2 md:space-x-0 md:space-y-2 overflow-x-auto no-scrollbar pb-2 md:pb-0">
+                    <li class="flex-shrink-0">
+                        <button onclick="switchTab('tab-start')" class="nav-btn w-auto md:w-full text-left px-4 py-2 md:py-3 rounded-full md:rounded-lg transition-colors text-sm font-medium whitespace-nowrap bg-indigo-600 text-white" data-target="tab-start">
+                            1. Dados
+                        </button>
+                    </li>
+                    <li class="flex-shrink-0">
+                        <button onclick="switchTab('tab-health')" class="nav-btn w-auto md:w-full text-left px-4 py-2 md:py-3 rounded-full md:rounded-lg transition-colors text-sm font-medium whitespace-nowrap hover:bg-slate-800 text-slate-300" data-target="tab-health">
+                            2. Saúde
+                        </button>
+                    </li>
+                    <li class="flex-shrink-0">
+                        <button onclick="switchTab('tab-risks')" class="nav-btn w-auto md:w-full text-left px-4 py-2 md:py-3 rounded-full md:rounded-lg transition-colors text-sm font-medium whitespace-nowrap hover:bg-slate-800 text-slate-300" data-target="tab-risks">
+                            3. Riscos
+                        </button>
+                    </li>
+                    <li class="flex-shrink-0">
+                        <button onclick="switchTab('tab-legal')" class="nav-btn w-auto md:w-full text-left px-4 py-2 md:py-3 rounded-full md:rounded-lg transition-colors text-sm font-medium whitespace-nowrap hover:bg-slate-800 text-slate-300" data-target="tab-legal">
+                            4. Legal
+                        </button>
+                    </li>
+                    <li class="flex-shrink-0">
+                        <button onclick="switchTab('tab-sign')" class="nav-btn w-auto md:w-full text-left px-4 py-2 md:py-3 rounded-full md:rounded-lg transition-colors text-sm font-medium whitespace-nowrap hover:bg-slate-800 text-slate-300" data-target="tab-sign">
+                            5. Assinar
+                        </button>
+                    </li>
+                </ul>
+            </div>
+            
+            <div class="hidden md:block p-6 bg-slate-800">
+                <div class="text-xs text-slate-400">Progresso</div>
+                <div class="w-full bg-slate-700 h-2 rounded-full mt-2 overflow-hidden">
+                    <div id="progress-bar" class="bg-indigo-500 h-full w-1/5 transition-all duration-500"></div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 overflow-y-auto custom-scroll p-4 md:p-10 bg-slate-50 relative">
+
+            <!-- TAB 1: Start & Identification -->
+            <section id="tab-start" class="tab-content active">
+                <div class="max-w-4xl mx-auto">
+                    <header class="mb-6 border-b border-slate-200 pb-6">
+                        <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+                            
+                            <!-- IMAGEM ESQUERDA (Desktop) -->
+                            <div class="hidden md:block w-32 flex justify-start">
+                                <img src="Logo_Esq.jpeg" alt="Logo Esquerda" class="h-24 w-auto object-contain rounded-md shadow-sm border border-slate-100">
+                            </div>
+
+                            <!-- TÍTULO CENTRALIZADO -->
+                            <div class="text-center w-full md:flex-1">
+                                <h2 class="text-2xl md:text-3xl font-bold text-slate-900 leading-tight">Desafio Funcional</h2>
+                                <p class="text-slate-500 mt-1 text-sm md:text-lg">2º Desafio Funcional Interno Live Academia</p>
+                            </div>
+                            
+                            <!-- IMAGEM DIREITA (Desktop) -->
+                            <div class="hidden md:block w-32 flex justify-end">
+                                <img src="Logo_Dir.jpeg" alt="Logo Direita" class="h-24 w-auto object-contain rounded-md shadow-sm border border-slate-100">
+                            </div>
+
+                            <!-- IMAGENS MOBILE (Lado a Lado abaixo do título) -->
+                            <div class="flex md:hidden w-full justify-center items-center gap-6 mt-2">
+                                <img src="Logo_Esq.jpeg" alt="Logo Esquerda" class="h-16 w-auto object-contain rounded-md shadow-sm border border-slate-100">
+                                <img src="Logo_Dir.jpeg" alt="Logo Direita" class="h-16 w-auto object-contain rounded-md shadow-sm border border-slate-100">
+                            </div>
+
+                        </div>
+                    </header>
+                    
+                    <div class="bg-white p-4 md:p-6 rounded-xl shadow-sm border border-slate-100 mb-6">
+                        <p class="text-slate-700 text-sm md:text-base leading-relaxed mb-4">
+                            Bem-vindo ao cadastro do evento. O <strong>Capitão/Responsável</strong> deve preencher os dados de todos os integrantes do trio. 
+                        </p>
+                        <div class="bg-blue-50 text-blue-800 text-xs md:text-sm p-3 rounded-md border border-blue-200 flex items-start">
+                            <svg class="w-5 h-5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <span>Os dados serão enviados automaticamente para a planilha da organização. O pagamento é realizado na etapa final.</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-4 md:p-8 rounded-xl shadow-sm border border-slate-200 space-y-6">
+                        <!-- Dados da Equipe -->
+                        <div>
+                            <h3 class="text-lg md:text-xl font-semibold text-slate-800 mb-3 border-l-4 border-indigo-500 pl-3">Dados da Equipe</h3>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Nome do Trio/Equipe</label>
+                                <input type="text" id="input-team-name" class="w-full p-3 bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition text-sm md:text-base" placeholder="Ex: Cross Warriors">
+                            </div>
+                        </div>
+
+                        <!-- Atleta 1 (Capitão) -->
+                        <div class="bg-indigo-50 p-4 md:p-5 rounded-lg border border-indigo-100">
+                            <h4 class="font-bold text-indigo-900 mb-3 flex items-center text-sm md:text-base">
+                                <span class="bg-indigo-200 text-indigo-800 text-xs px-2 py-1 rounded mr-2">Capitão</span> 
+                                Atleta 1
+                            </h4>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <div class="md:col-span-2">
+                                    <label class="block text-xs font-semibold text-indigo-800 mb-1">Nome Completo</label>
+                                    <input type="text" id="atl1-name" class="w-full p-2 bg-white border border-indigo-200 rounded outline-none text-sm" placeholder="Nome Completo">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-indigo-800 mb-1">CPF</label>
+                                    <input type="tel" id="atl1-cpf" class="w-full p-2 bg-white border border-indigo-200 rounded outline-none text-sm" placeholder="000.000.000-00">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-indigo-800 mb-1">Data Nasc.</label>
+                                    <input type="date" id="atl1-dob" class="w-full p-2 bg-white border border-indigo-200 rounded outline-none text-sm">
+                                </div>
+                                <div class="md:col-span-1">
+                                    <label class="block text-xs font-semibold text-indigo-800 mb-1">Tel. Emergência</label>
+                                    <input type="tel" id="atl1-phone" class="w-full p-2 bg-white border border-indigo-200 rounded outline-none text-sm" placeholder="(00) 00000-0000">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Atleta 2 -->
+                        <div class="bg-slate-50 p-4 md:p-5 rounded-lg border border-slate-200">
+                            <h4 class="font-bold text-slate-700 mb-3 text-sm md:text-base">Atleta 2</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <div class="md:col-span-2">
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">Nome Completo</label>
+                                    <input type="text" id="atl2-name" class="w-full p-2 bg-white border border-slate-300 rounded outline-none text-sm" placeholder="Nome Completo">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">CPF</label>
+                                    <input type="tel" id="atl2-cpf" class="w-full p-2 bg-white border border-slate-300 rounded outline-none text-sm" placeholder="000.000.000-00">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">Data Nasc.</label>
+                                    <input type="date" id="atl2-dob" class="w-full p-2 bg-white border border-slate-300 rounded outline-none text-sm">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Atleta 3 -->
+                        <div class="bg-slate-50 p-4 md:p-5 rounded-lg border border-slate-200">
+                            <h4 class="font-bold text-slate-700 mb-3 text-sm md:text-base">Atleta 3</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <div class="md:col-span-2">
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">Nome Completo</label>
+                                    <input type="text" id="atl3-name" class="w-full p-2 bg-white border border-slate-300 rounded outline-none text-sm" placeholder="Nome Completo">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">CPF</label>
+                                    <input type="tel" id="atl3-cpf" class="w-full p-2 bg-white border border-slate-300 rounded outline-none text-sm" placeholder="000.000.000-00">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 mb-1">Data Nasc.</label>
+                                    <input type="date" id="atl3-dob" class="w-full p-2 bg-white border border-slate-300 rounded outline-none text-sm">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-6 flex justify-end pb-10 md:pb-0">
+                            <button onclick="switchTab('tab-health')" class="w-full md:w-auto bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-lg font-medium transition shadow-md text-center">
+                                Continuar &rarr;
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 2: Health Declaration -->
+            <section id="tab-health" class="tab-content">
+                <div class="max-w-3xl mx-auto">
+                    <header class="mb-6">
+                        <h2 class="text-2xl md:text-3xl font-bold text-slate-900">Declaração de Saúde</h2>
+                        <p class="text-slate-500 mt-1">Aptidão física de <strong>todo o trio</strong>.</p>
+                    </header>
+
+                    <div class="bg-white p-4 md:p-8 rounded-xl shadow-sm border border-slate-200">
+                        <div class="space-y-4">
+                            <!-- Toggle Items (Responsive Layout) -->
+                            <div class="flex items-start p-3 md:p-4 bg-slate-50 rounded-lg border border-slate-200 cursor-pointer active:bg-slate-100" onclick="toggleHealth(1)">
+                                <div class="flex-shrink-0 mt-1">
+                                    <div id="check-1" class="w-6 h-6 rounded-full border-2 border-slate-300 bg-white flex items-center justify-center transition-colors">
+                                        <span class="text-white text-xs font-bold opacity-0 transition-opacity">✓</span>
+                                    </div>
+                                </div>
+                                <div class="ml-3 md:ml-4">
+                                    <h4 class="font-medium text-slate-900 text-sm md:text-base">Condições Plenas (Trio Completo)</h4>
+                                    <p class="text-xs md:text-sm text-slate-600 mt-1">Os 3 atletas estão em plenas condições físicas e mentais para a competição.</p>
+                                </div>
+                            </div>
+
+                            <div class="flex items-start p-3 md:p-4 bg-slate-50 rounded-lg border border-slate-200 cursor-pointer active:bg-slate-100" onclick="toggleHealth(2)">
+                                <div class="flex-shrink-0 mt-1">
+                                    <div id="check-2" class="w-6 h-6 rounded-full border-2 border-slate-300 bg-white flex items-center justify-center transition-colors">
+                                        <span class="text-white text-xs font-bold opacity-0 transition-opacity">✓</span>
+                                    </div>
+                                </div>
+                                <div class="ml-3 md:ml-4">
+                                    <h4 class="font-medium text-slate-900 text-sm md:text-base">Sem Impedimentos Médicos</h4>
+                                    <p class="text-xs md:text-sm text-slate-600 mt-1">Nenhum integrante possui recomendação médica impeditiva.</p>
+                                </div>
+                            </div>
+
+                            <div class="flex items-start p-3 md:p-4 bg-slate-50 rounded-lg border border-slate-200 cursor-pointer active:bg-slate-100" onclick="toggleHealth(3)">
+                                <div class="flex-shrink-0 mt-1">
+                                    <div id="check-3" class="w-6 h-6 rounded-full border-2 border-slate-300 bg-white flex items-center justify-center transition-colors">
+                                        <span class="text-white text-xs font-bold opacity-0 transition-opacity">✓</span>
+                                    </div>
+                                </div>
+                                <div class="ml-3 md:ml-4">
+                                    <h4 class="font-medium text-slate-900 text-sm md:text-base">Aptidão e Treino</h4>
+                                    <p class="text-xs md:text-sm text-slate-600 mt-1">Todos treinam regularmente e suportam o esforço dos WODs.</p>
+                                </div>
+                            </div>
+
+                            <div class="flex items-start p-3 md:p-4 bg-slate-50 rounded-lg border border-slate-200 cursor-pointer active:bg-slate-100" onclick="toggleHealth(4)">
+                                <div class="flex-shrink-0 mt-1">
+                                    <div id="check-4" class="w-6 h-6 rounded-full border-2 border-slate-300 bg-white flex items-center justify-center transition-colors">
+                                        <span class="text-white text-xs font-bold opacity-0 transition-opacity">✓</span>
+                                    </div>
+                                </div>
+                                <div class="ml-3 md:ml-4">
+                                    <h4 class="font-medium text-slate-900 text-sm md:text-base">Responsabilidade Pessoal</h4>
+                                    <p class="text-xs md:text-sm text-slate-600 mt-1">Cientes de que a organização não realiza triagem médica.</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-8 flex flex-col md:flex-row justify-between items-center gap-4 pb-10 md:pb-0">
+                            <span id="health-status" class="text-sm font-medium text-rose-500 text-center md:text-left">Confirme todos os itens acima</span>
+                            <button id="btn-health-next" onclick="switchTab('tab-risks')" class="w-full md:w-auto bg-slate-300 text-white px-8 py-3 rounded-lg font-medium transition cursor-not-allowed" disabled>Continuar &rarr;</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 3: Risk Analysis -->
+            <section id="tab-risks" class="tab-content">
+                <div class="max-w-5xl mx-auto">
+                    <header class="mb-6">
+                        <h2 class="text-2xl md:text-3xl font-bold text-slate-900">Assunção de Riscos</h2>
+                        <p class="text-slate-500 mt-1">Entenda os riscos para todo o trio.</p>
+                    </header>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+                        <!-- Chart Column -->
+                        <div class="bg-white p-4 md:p-6 rounded-xl shadow-sm border border-slate-200">
+                            <h3 class="text-base md:text-lg font-semibold text-slate-800 mb-4 text-center">Categorias de Risco</h3>
+                            <div class="chart-container">
+                                <canvas id="riskChart"></canvas>
+                            </div>
+                            <p class="text-xs text-center text-slate-400 mt-4">Toque nas fatias para detalhes</p>
+                        </div>
+
+                        <!-- Details Column -->
+                        <div class="space-y-4 md:space-y-6 pb-10 md:pb-0">
+                            <div class="bg-indigo-50 p-4 md:p-6 rounded-xl border border-indigo-100">
+                                <h3 id="risk-title" class="text-lg md:text-xl font-bold text-indigo-900 mb-2">Selecione uma categoria</h3>
+                                <p id="risk-desc" class="text-indigo-800 text-sm mb-4">Interaja com o gráfico para ver os detalhes.</p>
+                                <ul id="risk-list" class="space-y-2">
+                                    <li class="text-indigo-700 text-sm flex items-center"><span class="mr-2">●</span> Toque no gráfico ao lado.</li>
+                                </ul>
+                            </div>
+
+                            <div class="bg-white p-4 md:p-6 rounded-xl border border-slate-200 shadow-sm">
+                                <h4 class="font-bold text-slate-800 mb-2 text-sm md:text-base">Cláusula de Assunção</h4>
+                                <p class="text-xs md:text-sm text-slate-600 italic">"Reconheço e assumo livremente todos os riscos, conhecidos ou não, associados à participação do trio neste evento."</p>
+                            </div>
+
+                            <div class="flex justify-end pt-2">
+                                <button onclick="switchTab('tab-legal')" class="w-full md:w-auto bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-lg font-medium transition shadow-md">Entendido, Continuar &rarr;</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 4: Legal Terms -->
+            <section id="tab-legal" class="tab-content">
+                <div class="max-w-4xl mx-auto">
+                    <header class="mb-6">
+                        <h2 class="text-2xl md:text-3xl font-bold text-slate-900">Termos Legais</h2>
+                        <p class="text-slate-500 mt-1">Seções de responsabilidade.</p>
+                    </header>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 pb-10 md:pb-0">
+                        
+                        <!-- Isenção -->
+                        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                            <div class="bg-rose-50 p-3 md:p-4 border-b border-rose-100">
+                                <h3 class="font-bold text-rose-800 text-sm md:text-base">Isenção de Responsabilidade</h3>
+                            </div>
+                            <div class="p-4 md:p-6">
+                                <p class="text-xs md:text-sm text-slate-600 mb-3">A equipe <strong>ISENTA</strong> a organização sobre:</p>
+                                <ul class="space-y-2 text-xs md:text-sm text-slate-700">
+                                    <li class="flex items-start"><span class="text-rose-500 mr-2 font-bold">×</span> Danos materiais e furtos.</li>
+                                    <li class="flex items-start"><span class="text-rose-500 mr-2 font-bold">×</span> Acidentes/Lesões.</li>
+                                    <li class="flex items-start"><span class="text-rose-500 mr-2 font-bold">×</span> Despesas médicas.</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <!-- Socorro -->
+                        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                            <div class="bg-emerald-50 p-3 md:p-4 border-b border-emerald-100">
+                                <h3 class="font-bold text-emerald-800 text-sm md:text-base">Socorro Médico</h3>
+                            </div>
+                            <div class="p-4 md:p-6">
+                                <p class="text-xs md:text-sm text-slate-600 mb-3">Todos <strong>AUTORIZAM</strong> a equipe médica:</p>
+                                <ul class="space-y-2 text-xs md:text-sm text-slate-700">
+                                    <li class="flex items-start"><span class="text-emerald-500 mr-2">✓</span> Procedimentos de emergência.</li>
+                                    <li class="flex items-start"><span class="text-emerald-500 mr-2">✓</span> Transporte hospitalar.</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <!-- Imagem -->
+                        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                            <div class="bg-blue-50 p-3 md:p-4 border-b border-blue-100">
+                                <h3 class="font-bold text-blue-800 text-sm md:text-base">Direito de Imagem</h3>
+                            </div>
+                            <div class="p-4 md:p-6">
+                                <p class="text-xs md:text-sm text-slate-600">
+                                    Uso <strong>GRATUITO</strong> de imagem para divulgação, redes sociais e mídia oficial.
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Regras -->
+                        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                            <div class="bg-amber-50 p-3 md:p-4 border-b border-amber-100">
+                                <h3 class="font-bold text-amber-800 text-sm md:text-base">Conduta</h3>
+                            </div>
+                            <div class="p-4 md:p-6">
+                                <ul class="space-y-2 text-xs md:text-sm text-slate-700">
+                                    <li class="flex items-start"><span class="text-amber-500 mr-2">!</span> Respeito aos Árbitros.</li>
+                                    <li class="flex items-start"><span class="text-amber-500 mr-2">!</span> Fair play.</li>
+                                </ul>
+                            </div>
+                        </div>
+                        
+                         <div class="md:col-span-2 mt-4 flex justify-end">
+                            <button onclick="switchTab('tab-sign')" class="w-full md:w-auto bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-lg font-medium transition shadow-md">Aceitar e Assinar &rarr;</button>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- TAB 5: Signature -->
+            <section id="tab-sign" class="tab-content">
+                <div class="max-w-2xl mx-auto pb-10 md:pb-0">
+                    <header class="mb-6 text-center">
+                        <h2 class="text-2xl md:text-3xl font-bold text-slate-900">Validação Final</h2>
+                        <p class="text-slate-500 mt-1">Assinatura do Capitão/Responsável</p>
+                    </header>
+
+                    <div class="bg-white p-4 md:p-8 rounded-xl shadow-lg border border-indigo-100">
+                        <div class="mb-6 bg-slate-50 p-4 rounded-lg text-xs md:text-sm text-slate-600 border border-slate-200">
+                            <p class="font-semibold text-slate-800 mb-2">Resumo:</p>
+                            <p class="mb-2">Eu, <span id="summary-name" class="font-bold text-indigo-600">[Nome]</span>, do trio <span id="summary-team" class="font-bold text-indigo-600">[Trio]</span>, aceito os termos em nome da equipe.</p>
+                            <p class="text-xs text-slate-400 mt-2">Data: <span id="current-date" class="font-mono"></span></p>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="block text-sm font-bold text-slate-700 mb-2">Assinatura Digital</label>
+                            <p class="text-xs text-slate-500 mb-2">Assine no quadro abaixo (dedo ou mouse).</p>
+                            <!-- Signature Pad Container to allow resizing -->
+                            <div id="signature-container" class="w-full">
+                                <canvas id="signaturePad" class="signature-canvas rounded-lg"></canvas>
+                            </div>
+                            <button onclick="clearSignature()" class="text-xs text-red-500 hover:text-red-700 mt-2 underline py-2">Limpar e assinar novamente</button>
+                        </div>
+
+                        <div class="mt-6">
+                            <button id="btn-submit" onclick="finalizeWaiver()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition transform hover:-translate-y-0.5 flex justify-center items-center gap-2">
+                                <span>SALVAR E IR PARA PAGAMENTO</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg>
+                            </button>
+                            <div id="status-message" class="hidden mt-4 text-center">
+                                <div class="flex justify-center items-center gap-2 text-slate-600 text-sm">
+                                    <div class="spinner border-slate-400"></div>
+                                    <span>Processando inscrição...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION: PAYMENT (Hidden initially) -->
+            <section id="section-payment" class="hidden h-full flex items-center justify-center">
+                <div class="max-w-md w-full bg-white p-8 rounded-2xl shadow-2xl border border-emerald-100 text-center relative overflow-hidden">
+                    <div class="absolute top-0 left-0 w-full h-2 bg-emerald-500"></div>
+                    
+                    <div class="mx-auto w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-6">
+                        <svg class="w-8 h-8 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                    </div>
+
+                    <h2 class="text-2xl font-bold text-slate-800 mb-2">Inscrição Recebida!</h2>
+                    <p class="text-slate-500 mb-6">Para validar sua vaga no <span class="font-semibold text-emerald-600">2º Desafio Funcional</span>, realize o pagamento via Pix.</p>
+
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-6 flex flex-col items-center">
+                        <canvas id="qr-code" class="mb-4 shadow-sm border border-white rounded-md"></canvas>
+                        <p class="text-xs text-slate-400 mb-2">Chave Pix (CNPJ):</p>
+                        <div class="flex w-full items-center gap-2">
+                            <input type="text" value="00.000.000/0001-00" id="pix-key" readonly class="w-full text-center text-sm font-mono bg-white border border-slate-300 rounded p-2 text-slate-600 focus:outline-none">
+                            <button onclick="copyPix()" class="bg-slate-200 hover:bg-slate-300 text-slate-600 p-2 rounded transition" title="Copiar">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                            </button>
+                        </div>
+                        <p id="copy-feedback" class="text-xs text-emerald-600 mt-2 opacity-0 transition">Copiado!</p>
+                    </div>
+
+                    <a href="https://wa.me/5500000000000?text=Olá,%20segue%20o%20comprovante%20do%20Desafio%20Funcional" target="_blank" class="block w-full bg-green-500 hover:bg-green-600 text-white py-3 rounded-xl font-bold shadow-lg hover:shadow-xl transition transform hover:-translate-y-0.5 mb-3 flex items-center justify-center gap-2">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
+                        Enviar Comprovante
+                    </a>
+                    
+                    <button onclick="window.location.reload()" class="text-sm text-slate-400 hover:text-slate-600 underline">Voltar ao início</button>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Script Logic -->
+    <script>
+        const GOOGLE_SCRIPT_URL = ""; 
+
+        const state = {
+            currentTab: 'tab-start',
+            healthChecks: { 1: false, 2: false, 3: false, 4: false },
+        };
+
+        // Initialize QR Code
+        const qr = new QRious({
+          element: document.getElementById('qr-code'),
+          value: '00020126330014BR.GOV.BCB.PIX0111000000000005204000053039865802BR5913Live Academia6008Brasilia62070503***63041D3D', // Pix CopyPaste Genérico
+          size: 150
+        });
+
+        // --- Navigation Logic ---
+        function switchTab(tabId) {
+            // Prevent switch if payment is active
+            if(!document.getElementById('section-payment').classList.contains('hidden')) return;
+
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            
+            // Mobile & Desktop Button Styles
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                if(btn.dataset.target === tabId) {
+                    btn.classList.remove('text-slate-300', 'hover:bg-slate-800');
+                    btn.classList.add('bg-indigo-600', 'text-white');
+                } else {
+                    btn.classList.add('text-slate-300', 'hover:bg-slate-800');
+                    btn.classList.remove('bg-indigo-600', 'text-white');
+                }
+            });
+
+            // Update Progress
+            const progressMap = { 'tab-start': '20%', 'tab-health': '40%', 'tab-risks': '60%', 'tab-legal': '80%', 'tab-sign': '100%' };
+            const stepMap = { 'tab-start': '1', 'tab-health': '2', 'tab-risks': '3', 'tab-legal': '4', 'tab-sign': '5' };
+            
+            const pBar = document.getElementById('progress-bar');
+            if(pBar) pBar.style.width = progressMap[tabId];
+            
+            const mobInd = document.getElementById('mobile-step-indicator');
+            if(mobInd) mobInd.innerText = stepMap[tabId];
+
+            if(tabId === 'tab-sign') {
+                updateSummary();
+                setTimeout(() => resizeCanvas(), 100); 
+            }
+        }
+
+        function updateSummary() {
+            const nameCapt = document.getElementById('atl1-name').value;
+            const nameTeam = document.getElementById('input-team-name').value;
+            document.getElementById('summary-name').innerText = nameCapt || "[Nome]";
+            document.getElementById('summary-team').innerText = nameTeam || "[Trio]";
+            document.getElementById('current-date').innerText = new Date().toLocaleDateString('pt-BR');
+        }
+
+        // --- Health Toggle ---
+        function toggleHealth(id) {
+            state.healthChecks[id] = !state.healthChecks[id];
+            const checkEl = document.getElementById(`check-${id}`);
+            const spanEl = checkEl.querySelector('span');
+            
+            if (state.healthChecks[id]) {
+                checkEl.classList.remove('bg-white', 'border-slate-300');
+                checkEl.classList.add('bg-emerald-500', 'border-emerald-500');
+                spanEl.classList.remove('opacity-0');
+            } else {
+                checkEl.classList.add('bg-white', 'border-slate-300');
+                checkEl.classList.remove('bg-emerald-500', 'border-emerald-500');
+                spanEl.classList.add('opacity-0');
+            }
+
+            const allChecked = Object.values(state.healthChecks).every(Boolean);
+            const btn = document.getElementById('btn-health-next');
+            const status = document.getElementById('health-status');
+            
+            if (allChecked) {
+                btn.disabled = false;
+                btn.classList.remove('bg-slate-300', 'cursor-not-allowed');
+                btn.classList.add('bg-indigo-600', 'hover:bg-indigo-700', 'text-white', 'shadow-md');
+                status.innerText = "Pronto para continuar";
+                status.classList.remove('text-rose-500');
+                status.classList.add('text-emerald-600');
+            } else {
+                btn.disabled = true;
+                btn.classList.add('bg-slate-300', 'cursor-not-allowed');
+                btn.classList.remove('bg-indigo-600', 'hover:bg-indigo-700', 'text-white', 'shadow-md');
+                status.innerText = "Confirme todos os itens acima";
+                status.classList.add('text-rose-500');
+                status.classList.remove('text-emerald-600');
+            }
+        }
+
+        // --- Charts ---
+        const riskData = {
+            labels: ['Físicos', 'Fisiológicos', 'Externos'],
+            datasets: [{ data: [5, 6, 4], backgroundColor: ['#6366f1', '#f43f5e', '#f59e0b'], hoverOffset: 4 }],
+            details: {
+                0: { title: "Riscos Físicos", desc: "Lesões por carga/movimento.", items: ["Torções", "Fraturas", "Cortes"] },
+                1: { title: "Fisiológicos", desc: "Reações ao esforço.", items: ["Exaustão", "Síncope", "Rabdomiólise"] },
+                2: { title: "Externos", desc: "Ambiente/Outros.", items: ["Clima", "Equipamentos", "Piso"] }
+            }
+        };
+
+        const ctx = document.getElementById('riskChart').getContext('2d');
+        const riskChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: { labels: riskData.labels, datasets: riskData.datasets },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '60%',
+                plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } },
+                onClick: (event, elements) => {
+                    if (elements.length > 0) updateRiskDetails(elements[0].index);
+                }
+            }
+        });
+
+        function updateRiskDetails(index) {
+            const data = riskData.details[index];
+            document.getElementById('risk-title').innerText = data.title;
+            document.getElementById('risk-title').className = `text-lg font-bold mb-2 ${index === 0 ? 'text-indigo-900' : index === 1 ? 'text-rose-900' : 'text-amber-900'}`;
+            document.getElementById('risk-desc').innerText = data.desc;
+            const listEl = document.getElementById('risk-list');
+            listEl.innerHTML = '';
+            data.items.forEach(item => {
+                const li = document.createElement('li');
+                li.className = "text-slate-700 text-sm flex items-center";
+                li.innerHTML = `<span class="mr-2 font-bold ${index === 0 ? 'text-indigo-500' : index === 1 ? 'text-rose-500' : 'text-amber-500'}">●</span> ${item}`;
+                listEl.appendChild(li);
+            });
+        }
+        updateRiskDetails(0);
+
+        // --- Responsive Signature Canvas ---
+        const canvas = document.getElementById('signaturePad');
+        const signatureContainer = document.getElementById('signature-container');
+        let ctxSig = canvas.getContext('2d');
+        let isDrawing = false, lastX = 0, lastY = 0;
+
+        function resizeCanvas() {
+            const ratio = Math.max(window.devicePixelRatio || 1, 1);
+            canvas.width = signatureContainer.offsetWidth * ratio;
+            canvas.height = signatureContainer.offsetHeight * ratio;
+            canvas.style.width = signatureContainer.offsetWidth + "px";
+            canvas.style.height = signatureContainer.offsetHeight + "px";
+            ctxSig.scale(ratio, ratio);
+            
+            ctxSig.lineJoin = 'round';
+            ctxSig.lineCap = 'round';
+            ctxSig.lineWidth = 2;
+            ctxSig.strokeStyle = '#1e293b';
+        }
+
+        window.addEventListener('resize', () => {
+             if(document.getElementById('tab-sign').classList.contains('active')) {
+                 resizeCanvas();
+             }
+        });
+
+        function getPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return {
+                x: clientX - rect.left,
+                y: clientY - rect.top
+            };
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            const pos = getPos(e);
+            ctxSig.beginPath();
+            ctxSig.moveTo(lastX, lastY);
+            ctxSig.lineTo(pos.x, pos.y);
+            ctxSig.stroke();
+            [lastX, lastY] = [pos.x, pos.y];
+        }
+
+        ['mousedown', 'touchstart'].forEach(evt => 
+            canvas.addEventListener(evt, (e) => {
+                isDrawing = true;
+                const pos = getPos(e);
+                [lastX, lastY] = [pos.x, pos.y];
+                if(e.type === 'touchstart') e.preventDefault(); 
+            }, {passive: false})
+        );
+
+        ['mousemove', 'touchmove'].forEach(evt => 
+            canvas.addEventListener(evt, (e) => {
+                draw(e);
+                if(e.type === 'touchmove') e.preventDefault(); 
+            }, {passive: false})
+        );
+
+        ['mouseup', 'mouseout', 'touchend'].forEach(evt => 
+            canvas.addEventListener(evt, () => isDrawing = false)
+        );
+
+        function clearSignature() {
+            ctxSig.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // --- Copy Pix ---
+        function copyPix() {
+            const copyText = document.getElementById("pix-key");
+            copyText.select();
+            copyText.setSelectionRange(0, 99999); 
+            navigator.clipboard.writeText(copyText.value);
+            
+            const feedback = document.getElementById("copy-feedback");
+            feedback.classList.remove("opacity-0");
+            setTimeout(() => feedback.classList.add("opacity-0"), 2000);
+        }
+
+        // --- Finalize & Show Payment ---
+        function finalizeWaiver() {
+            const teamName = document.getElementById('input-team-name').value;
+            const atl1 = { name: document.getElementById('atl1-name').value, cpf: document.getElementById('atl1-cpf').value };
+            const atl2 = { name: document.getElementById('atl2-name').value, cpf: document.getElementById('atl2-cpf').value };
+            const atl3 = { name: document.getElementById('atl3-name').value, cpf: document.getElementById('atl3-cpf').value };
+            const atl1Phone = document.getElementById('atl1-phone').value;
+
+            if(!teamName || !atl1.name || !atl2.name || !atl3.name) {
+                alert("Preencha os nomes do trio na aba 1.");
+                switchTab('tab-start');
+                return;
+            }
+
+            const dataPayload = {
+                team: teamName,
+                captain: { ...atl1, phone: atl1Phone },
+                athlete2: atl2,
+                athlete3: atl3,
+                timestamp: new Date().toISOString()
+            };
+
+            const btn = document.getElementById('btn-submit');
+            const status = document.getElementById('status-message');
+            btn.disabled = true;
+            btn.classList.add('opacity-50');
+            status.classList.remove('hidden');
+
+            const handleSuccess = () => {
+                // HIDE TABS AND SHOW PAYMENT
+                document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+                document.getElementById('sidebar').classList.add('opacity-50', 'pointer-events-none'); // Disable sidebar
+                document.getElementById('section-payment').classList.remove('hidden');
+            };
+
+            if (!GOOGLE_SCRIPT_URL) {
+                setTimeout(() => {
+                    downloadCSV(teamName, atl1, atl2, atl3, atl1Phone);
+                    handleSuccess();
+                }, 1500);
+                return;
+            }
+
+            fetch(GOOGLE_SCRIPT_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(dataPayload)
+            }).then(() => {
+                handleSuccess();
+            }).catch(err => {
+                downloadCSV(teamName, atl1, atl2, atl3, atl1Phone);
+                handleSuccess();
+                alert("Backup salvo localmente devido a erro de conexão.");
+            });
+        }
+
+        function downloadCSV(team, a1, a2, a3, phone) {
+            const headers = ["Trio", "Capitao", "CPF_Cap", "Tel_Emerg", "Atleta2", "CPF_A2", "Atleta3", "CPF_A3", "Data"];
+            const values = [team, a1.name, a1.cpf, phone, a2.name, a2.cpf, a3.name, a3.cpf, new Date().toLocaleDateString('pt-BR')];
+            const csv = "data:text/csv;charset=utf-8," + headers.join(",") + "\n" + values.join(",");
+            const link = document.createElement("a");
+            link.href = encodeURI(csv);
+            link.download = `termo_${team.replace(/[^a-z0-9]/gi, '_')}.csv`;
+            link.click();
+        }
+    </script>
+</body>
+</html>
